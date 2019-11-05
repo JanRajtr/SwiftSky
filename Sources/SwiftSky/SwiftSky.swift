@@ -7,7 +7,6 @@
 //
 
 import Foundation
-import Alamofire
 import CoreLocation
 
 /**
@@ -62,7 +61,7 @@ public enum ApiError : Error {
      `Alamofire` request. Check the `ResponseSerializationFailureReason`
      of the error for more details on the failing serialization.
     */
-    case invalidJSON(AFError?)
+    case invalidJSON(Error?)
 
 }
 
@@ -271,23 +270,37 @@ public struct SwiftSky {
             return completion(.failure(.noApiKey))
         }
         
-        let manager = SessionManager.default
-        manager.session.configuration.requestCachePolicy = .reloadIgnoringLocalAndRemoteCacheData
-        manager.session.configuration.urlCache = nil
+        var request = URLRequest(url: url,
+                                 cachePolicy: .useProtocolCachePolicy,
+                                 timeoutInterval: 10)
         
-        manager.request(url, method: .get, headers: ["Accept-Encoding":"gzip"]).responseJSON { response in
-            switch response.result {
-            case .success(let data):
-                completion(.success(Forecast(data, headers: response.response?.allHeaderFields)))
-            case .failure(let error):
-                let code = response.response?.statusCode ?? 404
-                if code >= 500 && code < 600 {
-                    completion(.failure(.serverError))
-                } else {
-                    completion(.failure(.invalidJSON(error as? AFError)))
-                }
+        request.httpMethod = "GET"
+        request.allHTTPHeaderFields = ["Accept-Encoding":"gzip"]
+        
+        
+        let session = URLSession.shared.dataTask(with: request, completionHandler: { (data, response, error) in
+            let code = (response as! HTTPURLResponse).statusCode
+            
+            guard (200...299).contains(code) else {
+                completion(.failure(.serverError))
+                return
             }
-        }
+            guard data != nil else {
+                completion(.failure(.serverError))
+                return
+            }
+            do {
+                let json = try JSONSerialization.jsonObject(with: data!, options: []) as? [String: Any]
+                completion(.success(Forecast(json, headers: (response as! HTTPURLResponse).allHeaderFields)))
+            } catch {
+                completion(.failure(.serverError))
+                return
+            }
+            
+            
+        })
+        
+        session.resume()
         
     }
     
