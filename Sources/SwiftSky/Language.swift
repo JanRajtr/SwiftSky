@@ -53,7 +53,7 @@ public struct Language {
         var currentLanguage : Language = .english
         var currentIndex : Int = .max
         for lang in Language.allLanguages {
-            let i = preffered.index(of: lang.shortcode) ?? .max
+            let i = preffered.firstIndex(of: lang.shortcode) ?? .max
             if i < currentIndex {
                 currentIndex = i
                 currentLanguage = lang

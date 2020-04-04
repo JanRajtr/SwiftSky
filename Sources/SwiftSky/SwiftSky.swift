@@ -261,7 +261,7 @@ public struct SwiftSky {
         // construct exclude list from include list
         var exclude : [DataType] = [.current,.minutes,.hours,.days,.alerts]
         for type in data {
-            if let index = exclude.index(of: type) {
+            if let index = exclude.firstIndex(of: type) {
                 exclude.remove(at: index)
             }
         }
